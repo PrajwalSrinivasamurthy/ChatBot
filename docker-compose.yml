@@ -1,0 +1,45 @@
+services:
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./vectors
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./vectors/.env
+    environment:
+      # Override localhost URL from .env to use the docker service name
+      - QDRANT_URL=http://qdrant:6333
+    volumes:
+      - static_images:/app/static/images
+      - model_cache:/root/.cache
+    depends_on:
+      - qdrant
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./chatbot-app
+      dockerfile: Dockerfile
+      args:
+        # Replace with your server's public IP or domain
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:      # Qdrant vector data — persists between restarts
+  static_images:       # Extracted KB images served by backend
+  model_cache:         # HuggingFace + fastembed model cache
