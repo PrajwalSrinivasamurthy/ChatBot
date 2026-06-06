@@ -44,6 +44,10 @@ chatbot-app/next-env.d.ts
 .DS_Store
 **/.DS_Store
 
+# ── Claude Code internal files ────────────────────────────────────────────────
+CLAUDE.md
+AGENTS.md
+
 # ── IDE ────────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
