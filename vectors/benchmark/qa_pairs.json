@@ -1,0 +1,282 @@
+[
+  {
+    "id": "q001",
+    "category": "admissions",
+    "question": "How do I apply to TTU Online?",
+    "expected_answer_keywords": ["depts.ttu.edu/online/apply", "application", "online"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q002",
+    "category": "admissions",
+    "question": "What documents do I need to submit for admission?",
+    "expected_answer_keywords": ["transcripts", "application", "documentation", "GPA"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q003",
+    "category": "admissions",
+    "question": "Can I apply to TTU Online directly out of high school?",
+    "expected_answer_keywords": ["high school", "diploma", "GED", "online", "campus"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q004",
+    "category": "admissions",
+    "question": "Does TTU Online offer multiple start dates throughout the year?",
+    "expected_answer_keywords": ["multiple start dates", "year", "Online+"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q005",
+    "category": "financial_aid",
+    "question": "What financial aid options are available for TTU Online students?",
+    "expected_answer_keywords": ["federal aid", "grants", "scholarships", "military", "financial-aid"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q006",
+    "category": "financial_aid",
+    "question": "Will my financial aid disperse every 8 weeks?",
+    "expected_answer_keywords": ["semester", "8-week", "aid", "applied"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q007",
+    "category": "financial_aid",
+    "question": "How much do the online degree programs cost?",
+    "expected_answer_keywords": ["cost", "competitive", "transparent", "depts.ttu.edu/online/affordable"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q008",
+    "category": "course_format",
+    "question": "What are 8-week terms at TTU Online?",
+    "expected_answer_keywords": ["accelerated", "8-week", "fewer classes", "faster"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q009",
+    "category": "course_format",
+    "question": "How many courses should I take per 8-week term?",
+    "expected_answer_keywords": ["1-2 courses", "full-time", "schedule"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q010",
+    "category": "course_format",
+    "question": "What is considered full-time enrollment for 8-week courses?",
+    "expected_answer_keywords": ["6 hours", "full-time", "8-week term"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q011",
+    "category": "course_format",
+    "question": "Are TTU Online courses completely asynchronous?",
+    "expected_answer_keywords": ["asynchronous", "no required live sessions", "flexible"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q012",
+    "category": "programs",
+    "question": "What bachelor's degrees does TTU Online offer?",
+    "expected_answer_keywords": ["Psychology", "Business", "Criminology", "Computing Applications", "bachelor"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q013",
+    "category": "programs",
+    "question": "Does TTU Online offer a degree in Computing Applications?",
+    "expected_answer_keywords": ["Computing Applications", "programming", "technology", "cybersecurity"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q014",
+    "category": "programs",
+    "question": "Can I study criminology fully online at TTU?",
+    "expected_answer_keywords": ["Criminology", "online", "crime", "justice"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q015",
+    "category": "programs",
+    "question": "Is there a Human-Centered AI degree available online at TTU?",
+    "expected_answer_keywords": ["Human-Centered Artificial Intelligence", "AI", "ethics", "UX"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q016",
+    "category": "programs",
+    "question": "What is the 10K degree completion program?",
+    "expected_answer_keywords": ["10K", "transfer", "affordable", "prior credits", "depts.ttu.edu/online/10K"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q017",
+    "category": "programs",
+    "question": "Does TTU Online offer a degree in psychology?",
+    "expected_answer_keywords": ["Psychology", "online", "behavior", "BS", "BA"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q018",
+    "category": "programs",
+    "question": "Is there an engineering degree available through TTU Online?",
+    "expected_answer_keywords": ["engineering", "not", "Computing Applications", "alternative"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q019",
+    "category": "accreditation",
+    "question": "Is TTU Online accredited?",
+    "expected_answer_keywords": ["accredited", "Southern Association", "SACSCOC", "accreditation"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q020",
+    "category": "accreditation",
+    "question": "Are online degrees from TTU the same quality as on-campus degrees?",
+    "expected_answer_keywords": ["same faculty", "same academic standards", "accreditation", "on-campus"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q021",
+    "category": "registration",
+    "question": "How do I register for classes using a CRN?",
+    "expected_answer_keywords": ["Raiderlink", "CRN", "Add/Drop", "5-digit", "Submit"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q022",
+    "category": "registration",
+    "question": "How do I drop a course at TTU Online?",
+    "expected_answer_keywords": ["Raiderlink", "drop", "Registration", "Submit", "financial"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q023",
+    "category": "registration",
+    "question": "What is a time ticket at TTU?",
+    "expected_answer_keywords": ["time ticket", "date and time window", "register", "Raiderlink"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q024",
+    "category": "registration",
+    "question": "How do I schedule an appointment with my Online Student Advocate?",
+    "expected_answer_keywords": ["Raider Success Hub", "Schedule an Appointment", "eRaider"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q025",
+    "category": "registration",
+    "question": "How do I enroll in a payment plan for tuition?",
+    "expected_answer_keywords": ["Raiderlink", "Student Business Services", "eBill", "Payment Plans", "Enroll Now"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q026",
+    "category": "student_experience",
+    "question": "Can I complete my online degree from anywhere in the country?",
+    "expected_answer_keywords": ["anywhere", "location", "Online+", "designed"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q027",
+    "category": "student_experience",
+    "question": "Can online students walk the stage at graduation?",
+    "expected_answer_keywords": ["walk", "commencement", "eligible", "encouraged"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q028",
+    "category": "student_support",
+    "question": "What is an Online Student Advocate?",
+    "expected_answer_keywords": ["advocate", "navigation", "resources", "success", "degree plan"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q029",
+    "category": "transfer_credits",
+    "question": "How do I transfer credits to TTU Online?",
+    "expected_answer_keywords": ["official transcripts", "prior institutions", "evaluation"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q030",
+    "category": "industry_certificates",
+    "question": "What are Industry Career Certificates at TTU?",
+    "expected_answer_keywords": ["Coursera", "non-credit", "Google", "IBM", "Meta", "professional certificates"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q031",
+    "category": "industry_certificates",
+    "question": "Are Industry Career Certificates free for TTU students?",
+    "expected_answer_keywords": ["free", "no charge", "Texas Tech", "sponsored"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q032",
+    "category": "industry_certificates",
+    "question": "Do Industry Career Certificates count toward my TTU degree?",
+    "expected_answer_keywords": ["non-credit", "optional", "not a replacement", "degree plan"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q033",
+    "category": "industry_certificates",
+    "question": "How long do Industry Career Certificates take to complete?",
+    "expected_answer_keywords": ["3-12 months", "10 hours", "self-paced", "flexible"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q034",
+    "category": "industry_certificates",
+    "question": "What do I do if Coursera is asking me to pay for a certificate?",
+    "expected_answer_keywords": ["learning program", "consumer site", "toggle", "TTU email"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  },
+  {
+    "id": "q035",
+    "category": "online_plus",
+    "question": "What is TTU Online+ and how is it different from regular online degrees?",
+    "expected_answer_keywords": ["Online+", "proactive advising", "8-week", "support", "structured"],
+    "expected_source": "document.docx",
+    "agent": "ttu_online"
+  }
+]
