@@ -78,9 +78,14 @@ _static_dir.mkdir(exist_ok=True)
 (_static_dir / "images").mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
+_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "https://tosmonline0002.ttu.edu",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=_CORS_ORIGINS,
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
