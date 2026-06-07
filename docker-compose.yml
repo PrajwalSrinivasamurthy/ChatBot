@@ -22,6 +22,7 @@ services:
     volumes:
       - static_images:/app/static/images
       - model_cache:/root/.cache
+      - ./vectors/logs:/app/logs
     depends_on:
       - qdrant
     restart: unless-stopped
