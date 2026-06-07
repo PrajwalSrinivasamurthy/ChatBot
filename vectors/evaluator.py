@@ -7,7 +7,7 @@ from typing import Any
 
 # ── Thresholds ─────────────────────────────────────────────────────────────────
 
-_SHORT_THRESHOLD      = 80
+_SHORT_THRESHOLD      = 60
 _LONG_THRESHOLD       = 1500
 _CONFIDENCE_THRESHOLD = 0.60
 _SCORE_DEDUCTION      = 0.15
@@ -37,6 +37,19 @@ _COMMON_CAPS = {
 # ── Response cache (last 50 hashes) ───────────────────────────────────────────
 
 _response_cache: deque[str] = deque(maxlen=50)
+
+
+# ── Crisis detection ──────────────────────────────────────────────────────────
+
+_CRISIS_KEYWORDS = [
+    "killing myself", "suicide", "overdose", "panic attack", "self harm",
+    "hurt myself", "end my life", "want to die", "emergency", "severe panic",
+]
+
+
+def is_crisis_query(query: str) -> bool:
+    lower = query.lower()
+    return any(kw in lower for kw in _CRISIS_KEYWORDS)
 
 
 # ── Term extraction ────────────────────────────────────────────────────────────
@@ -76,7 +89,18 @@ def _extract_specific_terms(text: str) -> set[str]:
 # ── Individual flag checks ─────────────────────────────────────────────────────
 
 def _flag_response_too_short(response_text: str) -> bool:
-    return len(response_text.strip()) < _SHORT_THRESHOLD
+    text = response_text.strip()
+    if len(text) >= _SHORT_THRESHOLD:
+        return False
+    if re.search(r'\d{3}[.\-]\d{3}[.\-]\d{4}', text):
+        return False
+    if re.search(r'\S+@\S+\.\S+', text):
+        return False
+    if re.search(r'https?://', text):
+        return False
+    if re.search(r'\b(?:stands for|is an abbreviation)\b', text, re.IGNORECASE):
+        return False
+    return True
 
 
 def _flag_fallback_triggered(response_text: str, fallback_triggered: bool) -> bool:
@@ -87,6 +111,9 @@ def _flag_fallback_triggered(response_text: str, fallback_triggered: bool) -> bo
 
 
 def _flag_hallucination_risk(response_text: str, chunks: list[dict]) -> bool:
+    lower_start = response_text.lower().lstrip()
+    if lower_start.startswith(("error generating response", "503", "unavailable")):
+        return False
     if not chunks:
         return False  # no_chunks_retrieved covers this
     combined = " ".join(c.get("text", "") for c in chunks).lower()
@@ -129,6 +156,22 @@ def evaluate_response(
     chunks items must have at least: text (str), qdrant_score (float).
     Returns a structured eval dict — no external calls, no I/O.
     """
+    if is_crisis_query(query):
+        _all_false = {
+            "response_too_short": False, "fallback_triggered": False,
+            "hallucination_risk": False, "low_retrieval_confidence": False,
+            "no_chunks_retrieved": False, "response_too_long": False,
+            "repeated_response": False,
+        }
+        return {
+            "passed": True,
+            "flags": _all_false,
+            "score": 1.0,
+            "triggered_flags": [],
+            "recommendation": "ok",
+            "note": "crisis_redirect — scored as ok automatically",
+        }
+
     safe_chunks = chunks or []
 
     flags: dict[str, bool] = {

@@ -22,7 +22,7 @@ from ingest import download_sharepoint, run_ingestion_from_bytes, ingest_to_coll
 from pathlib import Path as _Path
 from llm import stream_answer
 from logger import log_interaction, log_error
-from evaluator import evaluate_response
+from evaluator import evaluate_response, is_crisis_query
 
 logger = logging.getLogger("kb_watcher")
 
@@ -226,6 +226,30 @@ _NO_INFO_PHRASES = [
 ]
 
 
+_CRISIS_RESPONSE = (
+    "If you or someone you know is in crisis, please reach out for help immediately:\n\n"
+    "• 911 — Emergency services\n"
+    "• 988 Suicide & Crisis Lifeline — Call or text 988 (available 24/7)\n"
+    "• Crisis Text Line — Text HOME to 741741\n"
+    "• TTU Counseling Center — 806.742.3674\n\n"
+    "You are not alone. Help is available right now.\n\n"
+    "For questions about TTU programs, I'm here to assist."
+)
+
+_CRISIS_KEYWORDS_MAIN = [
+    "killing myself", "kill myself", "suicide", "overdose", "panic attack",
+    "self harm", "harm myself", "hurt myself", "end my life", "want to die",
+    "emergency", "severe panic",
+]
+
+
+def get_crisis_response(query: str) -> str | None:
+    lower = query.lower()
+    if any(kw in lower for kw in _CRISIS_KEYWORDS_MAIN):
+        return _CRISIS_RESPONSE
+    return None
+
+
 @app.post("/chat/{agent_name}")
 async def chat(agent_name: str, req: ChatRequest, request: Request):
     if agent_name not in AGENTS:
@@ -236,6 +260,12 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
 
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Empty message")
+
+    crisis_msg = get_crisis_response(req.message)
+    if crisis_msg:
+        async def crisis_stream():
+            yield crisis_msg
+        return StreamingResponse(crisis_stream(), media_type="text/plain; charset=utf-8")
 
     collection = AGENTS[agent_name]["collection"]
     user_ip    = request.client.host if request.client else ""
