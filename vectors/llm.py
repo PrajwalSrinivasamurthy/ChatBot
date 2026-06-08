@@ -29,7 +29,7 @@ Do not use markdown asterisks, headers, or bullet symbols."""
 
 _GEN_CONFIG = types.GenerateContentConfig(
     temperature=0,
-    max_output_tokens=300,
+    max_output_tokens=1024,
     thinking_config=types.ThinkingConfig(thinking_budget=0),
 )
 
@@ -70,17 +70,31 @@ def _is_quota_error(e: Exception) -> bool:
 
 # ── Streaming ─────────────────────────────────────────────────────────────────
 
-async def stream_answer(question: str, chunks: list[dict], guardrails: str = ""):
+async def stream_answer(
+    question: str,
+    chunks: list[dict],
+    guardrails: str = "",
+    history: list[dict] | None = None,
+):
     prompt = build_prompt(question, chunks, guardrails)
 
+    # Build multi-turn contents — inject history then current prompt
+    contents: list = []
+    for turn in (history or [])[-8:]:   # last 4 exchanges max
+        role = "user" if turn.get("role") == "user" else "model"
+        content = turn.get("content", "").strip()
+        if content:
+            contents.append(types.Content(role=role, parts=[types.Part(text=content)]))
+    contents.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
+
     for model_name in FALLBACK_MODELS:
-        print(f"Trying model: {model_name} | temp=0 | max_tokens=300")
+        print(f"Trying model: {model_name} | max_tokens=1024 | history={len(contents)-1} turns")
         try:
             # Buffer the full response so strip_markdown sees complete patterns
             full = ""
             async for chunk in await _client.aio.models.generate_content_stream(
                 model=model_name,
-                contents=prompt,
+                contents=contents,
                 config=_GEN_CONFIG,
             ):
                 if chunk.text:

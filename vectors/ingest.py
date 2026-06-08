@@ -212,6 +212,20 @@ def _token_count(text: str) -> int:
     return len(_tokenizer.encode(text, add_special_tokens=False))
 
 
+def _detect_heading(unit: str) -> bool:
+    """True if this unit looks like a section-heading (short, no trailing punctuation)."""
+    unit = unit.strip()
+    if not unit or "\n" in unit:
+        return False
+    if len(unit) > 100:
+        return False
+    if unit.endswith((".", "?", ",", ";", ":")):
+        return False
+    if unit.startswith(("Step ", "- ", "• ")):
+        return False
+    return True
+
+
 def _split_into_units(text: str) -> list[str]:
     units: list[str] = []
     for para in re.split(r"\n{2,}", text):
@@ -237,12 +251,20 @@ def _split_into_units(text: str) -> list[str]:
 def chunk_text(text: str) -> list[str]:
     units = _split_into_units(text)
     chunks: list[str] = []
+    chunk_sections: list[str] = []   # section active when each chunk was started
     current_units: list[str] = []
     current_tokens = 0
+    current_section: str = ""
+    next_chunk_section: str = ""     # section to stamp on the chunk being built
+
     for unit in units:
+        if _detect_heading(unit):
+            current_section = unit.strip()
+
         unit_tokens = _token_count(unit)
         if current_tokens + unit_tokens > CHUNK_TOKENS and current_units:
             chunks.append("\n\n".join(current_units))
+            chunk_sections.append(next_chunk_section)
             overlap: list[str] = []
             overlap_tokens = 0
             for u in reversed(current_units):
@@ -254,11 +276,26 @@ def chunk_text(text: str) -> list[str]:
                     break
             current_units = overlap
             current_tokens = overlap_tokens
+            next_chunk_section = current_section   # next chunk belongs to current section
+
         current_units.append(unit)
         current_tokens += unit_tokens
+
     if current_units:
         chunks.append("\n\n".join(current_units))
-    return [c for c in chunks if _token_count(c) > 20]
+        chunk_sections.append(next_chunk_section)
+
+    # Prepend section heading to any chunk that crossed a section boundary
+    # without carrying the heading in its overlap text.
+    result: list[str] = []
+    for chunk, section in zip(chunks, chunk_sections):
+        if _token_count(chunk) <= 20:
+            continue
+        if section and not chunk.strip().startswith(section):
+            chunk = f"{section}\n\n{chunk}"
+        result.append(chunk)
+
+    return result
 
 
 # ── Core pipeline ─────────────────────────────────────────────────────────────

@@ -261,10 +261,17 @@ export default function AgentChatPage() {
 
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+        // Build history from the conversation BEFORE adding the current message
+        const historyMessages = (activeConversation?.messages ?? [])
+          .filter((m) => m.content.trim() && !m.isStreaming)
+          .slice(-8)
+          .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
         const res = await fetch(`${apiUrl}/chat/${agentId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({ message: text, history: historyMessages }),
         });
 
         if (!res.ok || !res.body) throw new Error("API error");

@@ -93,9 +93,15 @@ app.add_middleware(
 
 # ── Models ─────────────────────────────────────────────────────────────────────
 
+class HistoryItem(BaseModel):
+    role: str      # "user" | "assistant"
+    content: str
+
+
 class ChatRequest(BaseModel):
     message: str
-    session_id: str = ""  # frontend passes this; generated server-side if absent
+    session_id: str = ""
+    history: list[HistoryItem] = []
 
 
 class IngestRequest(BaseModel):
@@ -275,7 +281,7 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
 
     try:
         t0 = time.monotonic()
-        results = _search_collection(collection, req.message, top_k=5)
+        results = _search_collection(collection, req.message, top_k=7)
         retrieval_latency_ms = int((time.monotonic() - t0) * 1000)
     except Exception as e:
         log_error(
@@ -328,7 +334,8 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
     async def streamer():
         full = ""
         t_llm = time.monotonic()
-        async for chunk in stream_answer(req.message, results, guardrails=guardrails):
+        history_dicts = [{"role": h.role, "content": h.content} for h in req.history]
+        async for chunk in stream_answer(req.message, results, guardrails=guardrails, history=history_dicts):
             full += chunk
             yield chunk
         llm_latency_ms   = int((time.monotonic() - t_llm) * 1000)
