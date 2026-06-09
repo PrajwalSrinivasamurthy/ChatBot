@@ -19,19 +19,56 @@ FALLBACK_MODELS = [
     "gemini-flash-lite-latest",
 ]
 
-SYSTEM_PROMPT = """You must answer using ONLY the context provided. If the answer exists anywhere \
-in the context even partially use it to answer. Do NOT say you don't have information unless \
-the context is completely empty or entirely unrelated.
+SYSTEM_PROMPT = """You are the TTU Online+ assistant for Texas Tech University.
+You help students and staff with questions about TTU Online+ programs, admissions,
+registration, financial aid, and Industry Career Certificates.
 
-If the context contains numbered steps (lines starting with "Step N:"), present each step on \
-its own line in the same order. Otherwise answer concisely in plain sentences. \
-Do not use markdown asterisks, headers, or bullet symbols."""
+Answer ONLY using the provided context. If the context does not contain the answer,
+say so honestly and direct the user to the TTU Online team.
 
-_GEN_CONFIG = types.GenerateContentConfig(
-    temperature=0,
-    max_output_tokens=1024,
-    thinking_config=types.ThinkingConfig(thinking_budget=0),
-)
+RESPONSE FORMAT RULES:
+1. Organize answers into clear sections with bold headers when the answer covers
+   multiple topics or categories.
+
+2. Use bullet points for any list of items (programs, steps, requirements, options).
+   Never write a long paragraph when a bulleted list works better.
+
+3. Always include relevant contact information when it appears in the context —
+   phone numbers, email addresses, and links must be included in your response,
+   not omitted.
+
+4. End every response with a helpful next step — a relevant link, a contact,
+   or an offer to help further.
+
+5. Never repeat the same information twice in one response.
+
+6. Be concise and well-organized. Prefer structured, scannable answers over
+   dense walls of text.
+
+7. When listing programs or degrees, group them by category (e.g. Business,
+   Social Sciences, Computing) rather than one long flat list.
+
+STANDARD CONTACT INFO (include when relevant):
+- TTU Online+ phone: 1-844-691-0494
+- TTU Online+ email: online@ttu.edu
+- Programs page: https://www.depts.ttu.edu/online/programs/
+- General info: GoOnline.ttu.edu
+
+SAFETY RULES:
+- If a user expresses thoughts of self-harm, suicide, or crisis, do not answer
+  normally. Direct them to 988, 911, and the TTU counseling center immediately.
+- Never provide medical, legal, or financial advice — route to the appropriate
+  TTU office.
+- Stay strictly within your scope as a TTU Online assistant."""
+
+
+def _make_gen_config(system_instruction: str) -> types.GenerateContentConfig:
+    return types.GenerateContentConfig(
+        temperature=0.2,
+        max_output_tokens=2048,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+        system_instruction=system_instruction,
+    )
 
 
 # ── Markdown safety net ───────────────────────────────────────────────────────
@@ -46,14 +83,9 @@ def strip_markdown(text: str) -> str:
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
-def build_prompt(question: str, chunks: list[dict], guardrails: str = "") -> str:
+def build_prompt(question: str, chunks: list[dict]) -> str:
     retrieved_context = "\n\n".join(c["text"] for c in chunks)
-    agent_rules = f"\n\nAgent scope rules:\n{guardrails}" if guardrails else ""
-    return (
-        f"{SYSTEM_PROMPT}{agent_rules}\n\n"
-        f"Context:\n{retrieved_context}\n\n"
-        f"Question: {question}"
-    )
+    return f"Context:\n{retrieved_context}\n\nQuestion: {question}"
 
 
 def _debug_footer(chunks: list[dict]) -> str:
@@ -76,9 +108,15 @@ async def stream_answer(
     guardrails: str = "",
     history: list[dict] | None = None,
 ):
-    prompt = build_prompt(question, chunks, guardrails)
+    prompt = build_prompt(question, chunks)
 
-    # Build multi-turn contents — inject history then current prompt
+    # System instruction = base prompt + per-agent guardrails (applied on every request)
+    system_instr = SYSTEM_PROMPT
+    if guardrails:
+        system_instr += f"\n\nAgent scope rules:\n{guardrails}"
+    gen_config = _make_gen_config(system_instr)
+
+    # Build multi-turn contents — history turns then current prompt
     contents: list = []
     for turn in (history or [])[-8:]:   # last 4 exchanges max
         role = "user" if turn.get("role") == "user" else "model"
@@ -88,23 +126,21 @@ async def stream_answer(
     contents.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
 
     for model_name in FALLBACK_MODELS:
-        print(f"Trying model: {model_name} | max_tokens=1024 | history={len(contents)-1} turns")
+        print(f"Trying model: {model_name} | max_tokens=2048 | history={len(contents)-1} turns")
         try:
-            # Buffer the full response so strip_markdown sees complete patterns
             full = ""
             async for chunk in await _client.aio.models.generate_content_stream(
                 model=model_name,
                 contents=contents,
-                config=_GEN_CONFIG,
+                config=gen_config,
             ):
                 if chunk.text:
                     full += chunk.text
 
-            clean = strip_markdown(full)
-            print(f"  [{model_name}] {clean[:120]}...")
+            print(f"  [{model_name}] {full[:120]}...")
 
-            # Stream the cleaned text word-by-word for natural UI feel
-            words = clean.split(" ")
+            # Stream word-by-word for natural UI feel
+            words = full.split(" ")
             for i, word in enumerate(words):
                 yield ("" if i == 0 else " ") + word
                 await asyncio.sleep(0.02)

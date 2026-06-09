@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Message } from "@/types/chat";
 import { Bot, Copy, ThumbsUp, ThumbsDown, RotateCcw, User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { useState } from "react";
 import {
   Tooltip,
@@ -60,7 +61,7 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
         {/* Bubble */}
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words",
+            "rounded-2xl px-4 py-3 text-sm leading-relaxed break-words",
             isUser
               ? "bg-primary text-primary-foreground rounded-tr-sm"
               : "bg-muted text-foreground rounded-tl-sm"
@@ -75,8 +76,25 @@ export function MessageBubble({ message, onRegenerate }: MessageBubbleProps) {
                 <span className="w-1 h-1 bg-current rounded-full animate-bounce [animation-delay:300ms]" />
               </span>
             </span>
-          ) : (
+          ) : isUser ? (
             message.content
+          ) : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
+                li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                a: ({ href, children }) => (
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:opacity-80">
+                    {children}
+                  </a>
+                ),
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
           )}
         </div>
 
