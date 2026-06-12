@@ -23,6 +23,9 @@ from pathlib import Path as _Path
 from llm import stream_answer
 from logger import log_interaction, log_error
 from evaluator import evaluate_response, is_crisis_query
+from cache import get_cached_response, store_cached_response
+from session import get_history, add_turn
+from ratelimit import is_rate_limited
 
 logger = logging.getLogger("kb_watcher")
 
@@ -267,17 +270,44 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Empty message")
 
+    collection   = AGENTS[agent_name]["collection"]
+    user_ip      = request.client.host if request.client else ""
+    user_agent   = request.headers.get("user-agent", "")
+    session_id   = req.session_id or str(_uuid.uuid4())
+    t_request    = time.monotonic()
+    user_ip_hash = hashlib.sha256(user_ip.encode()).hexdigest()
+
+    # POSITION 1 — rate limiting
+    if is_rate_limited(user_ip_hash):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests. Please wait before trying again.",
+        )
+
+    # Crisis interception — bypass cache and session history
     crisis_msg = get_crisis_response(req.message)
     if crisis_msg:
         async def crisis_stream():
             yield crisis_msg
         return StreamingResponse(crisis_stream(), media_type="text/plain; charset=utf-8")
 
-    collection = AGENTS[agent_name]["collection"]
-    user_ip    = request.client.host if request.client else ""
-    user_agent = request.headers.get("user-agent", "")
-    session_id = req.session_id or str(_uuid.uuid4())
-    t_request  = time.monotonic()
+    # POSITION 2 — semantic response cache
+    cached = get_cached_response(req.message)
+    if cached:
+        print(f"  [CACHE HIT] sim={cached['similarity']} | {cached['original_query'][:60]}")
+        return {
+            "response": cached["response"],
+            "source": "cache",
+            "cache_hit": True,
+            "similarity": cached["similarity"],
+        }
+
+    # POSITION 3 — Redis session history (replaces req.history)
+    session_turns = get_history(session_id)
+    history_dicts: list[dict] = []
+    for turn in session_turns:
+        history_dicts.append({"role": "user",      "content": turn["query"]})
+        history_dicts.append({"role": "assistant",  "content": turn["response"]})
 
     try:
         t0 = time.monotonic()
@@ -334,7 +364,6 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
     async def streamer():
         full = ""
         t_llm = time.monotonic()
-        history_dicts = [{"role": h.role, "content": h.content} for h in req.history]
         async for chunk in stream_answer(req.message, results, guardrails=guardrails, history=history_dicts):
             full += chunk
             yield chunk
@@ -344,6 +373,12 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
         answered = not any(p in full.lower() for p in _NO_INFO_PHRASES)
         if image_ids and answered:
             yield f"\n__IMAGES__:{','.join(image_ids)}"
+
+        # POSITION 4 — store in cache and session (skip on LLM errors or 503)
+        is_llm_error = full.lower().startswith("error generating response")
+        if not is_llm_error:
+            store_cached_response(req.message, full)
+            add_turn(session_id, req.message, full)
 
         eval_result = evaluate_response(
             query=req.message,
