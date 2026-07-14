@@ -4,19 +4,17 @@ import asyncio
 import os
 import re
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from openai import AsyncOpenAI
 
 load_dotenv()
 
-_client = genai.Client(api_key=os.getenv("LLM_API_KEY", ""))
+_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
 _DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 FALLBACK_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-flash-latest",
-    "gemini-2.0-flash-lite",
-    "gemini-flash-lite-latest",
+    "gpt-4o-mini",
+    "gpt-4o",
+    "gpt-4.1-mini",
 ]
 
 SYSTEM_PROMPT = """You are the TTU Online+ assistant for Texas Tech University.
@@ -62,15 +60,6 @@ SAFETY RULES:
 - Stay strictly within your scope as a TTU Online assistant."""
 
 
-def _make_gen_config(system_instruction: str) -> types.GenerateContentConfig:
-    return types.GenerateContentConfig(
-        temperature=0.2,
-        max_output_tokens=2048,
-        thinking_config=types.ThinkingConfig(thinking_budget=0),
-        system_instruction=system_instruction,
-    )
-
-
 # ── Markdown safety net ───────────────────────────────────────────────────────
 
 def strip_markdown(text: str) -> str:
@@ -97,7 +86,7 @@ def _debug_footer(chunks: list[dict]) -> str:
 
 def _is_quota_error(e: Exception) -> bool:
     err = str(e)
-    return "RESOURCE_EXHAUSTED" in err or "429" in err or "quota" in err.lower()
+    return "insufficient_quota" in err or "rate_limit" in err.lower() or "429" in err
 
 
 # ── Streaming ─────────────────────────────────────────────────────────────────
@@ -114,28 +103,31 @@ async def stream_answer(
     system_instr = SYSTEM_PROMPT
     if guardrails:
         system_instr += f"\n\nAgent scope rules:\n{guardrails}"
-    gen_config = _make_gen_config(system_instr)
 
-    # Build multi-turn contents — history turns then current prompt
-    contents: list = []
+    # Build multi-turn messages — system, then history turns, then current prompt
+    messages: list[dict] = [{"role": "system", "content": system_instr}]
     for turn in (history or [])[-8:]:   # last 4 exchanges max
-        role = "user" if turn.get("role") == "user" else "model"
+        role = "user" if turn.get("role") == "user" else "assistant"
         content = turn.get("content", "").strip()
         if content:
-            contents.append(types.Content(role=role, parts=[types.Part(text=content)]))
-    contents.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": prompt})
 
     for model_name in FALLBACK_MODELS:
-        print(f"Trying model: {model_name} | max_tokens=2048 | history={len(contents)-1} turns")
+        print(f"Trying model: {model_name} | max_tokens=2048 | history={len(messages)-2} turns")
         try:
             full = ""
-            async for chunk in await _client.aio.models.generate_content_stream(
+            stream = await _client.chat.completions.create(
                 model=model_name,
-                contents=contents,
-                config=gen_config,
-            ):
-                if chunk.text:
-                    full += chunk.text
+                messages=messages,
+                temperature=0.2,
+                max_tokens=2048,
+                stream=True,
+            )
+            async for chunk in stream:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    full += delta
 
             print(f"  [{model_name}] {full[:120]}...")
 

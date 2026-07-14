@@ -22,6 +22,7 @@ vectors/static/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 vectors/logs/
+vectors/.monitor_state
 
 # ── Benchmark results ─────────────────────────────────────────────────────────
 vectors/benchmark/results/

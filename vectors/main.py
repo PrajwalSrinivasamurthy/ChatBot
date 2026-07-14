@@ -398,7 +398,7 @@ async def chat(agent_name: str, req: ChatRequest, request: Request):
             retrieval_result=retrieval_result,
             response_result={
                 "text": full,
-                "model_used": "gemini-2.5-flash",
+                "model_used": "gpt-4o-mini",
                 "prompt_tokens": 0,
                 "completion_tokens": 0,
                 "tokens_used": 0,

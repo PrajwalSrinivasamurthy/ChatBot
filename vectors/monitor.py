@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,15 +11,18 @@ load_dotenv(Path(__file__).parent / ".env")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 
-HEALTH_URL     = os.getenv("HEALTH_URL", "http://localhost:8000/health")
-CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL", "300"))
-TWILIO_SID     = os.getenv("TWILIO_SID", "")
-TWILIO_TOKEN   = os.getenv("TWILIO_TOKEN", "")
-TWILIO_FROM    = os.getenv("TWILIO_FROM", "")
-TWILIO_TO_1    = os.getenv("TWILIO_TO_1", "")
-TWILIO_TO_2    = os.getenv("TWILIO_TO_2", "")
+HEALTH_URL   = os.getenv("HEALTH_URL", "http://localhost:8000/health")
+TWILIO_SID   = os.getenv("TWILIO_SID", "")
+TWILIO_TOKEN = os.getenv("TWILIO_TOKEN", "")
+TWILIO_FROM  = os.getenv("TWILIO_FROM", "")
+TWILIO_TO_1  = os.getenv("TWILIO_TO_1", "")
+TWILIO_TO_2  = os.getenv("TWILIO_TO_2", "")
 
 RECIPIENTS = [n for n in [TWILIO_TO_1, TWILIO_TO_2] if n.strip()]
+
+# Persists last known status across cron invocations (this script is single-shot,
+# run on a schedule, rather than a long-running daemon).
+STATE_FILE = Path(__file__).parent / ".monitor_state"
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -51,55 +53,32 @@ def check_health() -> tuple[bool, str]:
         return False, str(exc)
 
 
-# ── Main loop ──────────────────────────────────────────────────────────────────
+# ── Single-shot check (invoked by cron every 30 min) ──────────────────────────
 
 def main() -> None:
-    print(f"[{_now()}] Monitor starting — checking {HEALTH_URL} every {CHECK_INTERVAL}s")
-    print(f"[{_now()}] Alerting {len(RECIPIENTS)} recipient(s): {', '.join(RECIPIENTS)}")
+    last_status = STATE_FILE.read_text().strip() if STATE_FILE.exists() else None
 
-    # Startup notification
-    try:
-        send_sms(f"✅ TTU Chatbot Monitor started at {_now()} UTC")
-    except Exception as exc:
-        print(f"[{_now()}] Startup SMS failed: {exc}")
+    is_up, error = check_health()
+    ts = _now()
+    status = "up" if is_up else "down"
+    print(f"[{ts}] Status: {status.upper()}" + (f" ({error})" if error else ""), flush=True)
 
-    last_status = "up"
+    if last_status is None:
+        # First-ever run: only alert if we start out down; otherwise just record state.
+        if not is_up:
+            send_sms(f"🔴 TTU Chatbot is DOWN\nFailed at: {ts} UTC\nError: {error}")
+    elif status != last_status:
+        if is_up:
+            send_sms(f"✅ TTU Chatbot is back UP\nRecovered at: {ts} UTC")
+        else:
+            send_sms(f"🔴 TTU Chatbot is DOWN\nFailed at: {ts} UTC\nError: {error}")
 
-    while True:
-        try:
-            is_up, error = check_health()
-            ts = _now()
-            print(f"[{ts}] Status: {'UP' if is_up else 'DOWN'}", flush=True)
-
-            if is_up and last_status == "down":
-                try:
-                    send_sms(
-                        f"✅ TTU Chatbot is back UP\n"
-                        f"Recovered at: {ts} UTC"
-                    )
-                except Exception as exc:
-                    print(f"[{ts}] Recovery SMS failed: {exc}")
-                last_status = "up"
-
-            elif not is_up and last_status == "up":
-                try:
-                    send_sms(
-                        f"🔴 TTU Chatbot is DOWN\n"
-                        f"Failed at: {ts} UTC\n"
-                        f"Error: {error}"
-                    )
-                except Exception as exc:
-                    print(f"[{ts}] Alert SMS failed: {exc}")
-                last_status = "down"
-
-        except Exception as exc:
-            print(f"[{_now()}] Monitor loop error: {exc}")
-
-        time.sleep(CHECK_INTERVAL)
+    STATE_FILE.write_text(status)
 
 
 if __name__ == "__main__":
     main()
 
-# ── How to run in background ───────────────────────────────────────────────────
-# nohup python monitor.py > logs/monitor.log 2>&1 &
+# ── Cron setup ──────────────────────────────────────────────────────────────────
+# Runs every 30 minutes:
+# */30 * * * * cd "/path/to/vectors" && .venv/bin/python3 monitor.py >> logs/monitor.log 2>&1
