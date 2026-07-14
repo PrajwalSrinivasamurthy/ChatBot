@@ -22,13 +22,25 @@ RECIPIENTS = [n for n in [TWILIO_TO_1, TWILIO_TO_2] if n.strip()]
 
 # Persists last known status across cron invocations (this script is single-shot,
 # run on a schedule, rather than a long-running daemon).
-STATE_FILE = Path(__file__).parent / ".monitor_state"
+STATE_FILE = os.path.join(os.path.dirname(__file__), ".monitor_state")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def read_last_state() -> str:
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE) as f:
+            return f.read().strip()
+    return "up"
+
+
+def write_state(status: str) -> None:
+    with open(STATE_FILE, "w") as f:
+        f.write(status)
 
 
 def send_sms(body: str) -> None:
@@ -56,24 +68,20 @@ def check_health() -> tuple[bool, str]:
 # ── Single-shot check (invoked by cron every 30 min) ──────────────────────────
 
 def main() -> None:
-    last_status = STATE_FILE.read_text().strip() if STATE_FILE.exists() else None
+    last_status = read_last_state()
 
     is_up, error = check_health()
     ts = _now()
     status = "up" if is_up else "down"
     print(f"[{ts}] Status: {status.upper()}" + (f" ({error})" if error else ""), flush=True)
 
-    if last_status is None:
-        # First-ever run: only alert if we start out down; otherwise just record state.
-        if not is_up:
-            send_sms(f"🔴 TTU Chatbot is DOWN\nFailed at: {ts} UTC\nError: {error}")
-    elif status != last_status:
+    if status != last_status:
         if is_up:
             send_sms(f"✅ TTU Chatbot is back UP\nRecovered at: {ts} UTC")
         else:
             send_sms(f"🔴 TTU Chatbot is DOWN\nFailed at: {ts} UTC\nError: {error}")
 
-    STATE_FILE.write_text(status)
+    write_state(status)
 
 
 if __name__ == "__main__":
